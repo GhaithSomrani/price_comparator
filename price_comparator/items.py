@@ -15,33 +15,37 @@ class PriceComparatorItem(scrapy.Item):
 
 
 class TunisianetItem(Item):
-   
+
 
     name = Field()
     link = Field()
     Url = Field()
     category = Field()
+    subcategory = Field()  # Added subcategory
     productname = Field()
     reference = Field()
     price = Field()
     availability = Field()
     brand = Field()
     imageUrl = Field()
+    description = Field()  # Added short description
     
     
 class MytekItem(Item):
-   
+
 
     name = Field()
     link = Field()
     Url = Field()
     category = Field()
+    subcategory = Field()  # Added subcategory
     productname = Field()
     reference = Field()
     price = Field()
     availability = Field()
     brand = Field()
     imageUrl = Field()
+    description = Field()  # Added short description
     
     
     
