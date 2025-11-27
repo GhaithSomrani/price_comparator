@@ -584,9 +584,10 @@ def products_stats():
         # Use the same logic as /products/new endpoint
         yesterday = datetime.now() - timedelta(days=1)
 
-        # Simple count with the same query as /products/new
+        # Count only products with valid DateAjout field (not null, not missing)
+        # This matches the behavior of /products/new when no filters are applied
         total_new_products = products_collection.count_documents({
-            'DateAjout': {'$gte': yesterday}
+            'DateAjout': {'$type': 'date', '$gte': yesterday}
         })
 
         # Get modified products count (last 24 hours - since yesterday)
@@ -614,17 +615,17 @@ def products_stats():
         })
 
         # Get stock status counts for new products (last 24 hours)
-        # Use the same query logic as /products/new endpoint
+        # Use the same query logic as /products/new endpoint with type validation
         new_in_stock = products_collection.count_documents({
-            'DateAjout': {'$gte': yesterday},
+            'DateAjout': {'$type': 'date', '$gte': yesterday},
             'Stock': {'$regex': '^in stock$', '$options': 'i'}
         })
         new_on_order = products_collection.count_documents({
-            'DateAjout': {'$gte': yesterday},
+            'DateAjout': {'$type': 'date', '$gte': yesterday},
             'Stock': {'$regex': '^on order$', '$options': 'i'}
         })
         new_out_of_stock = products_collection.count_documents({
-            'DateAjout': {'$gte': yesterday},
+            'DateAjout': {'$type': 'date', '$gte': yesterday},
             'Stock': {'$regex': '^out of stock$', '$options': 'i'}
         })
 
