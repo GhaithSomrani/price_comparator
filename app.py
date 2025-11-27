@@ -12,7 +12,12 @@ app = Flask(__name__)
 MONGO_URI = "mongodb://localhost:27017/"
 DATABASE_NAME = "product_comparator"
 
-client = MongoClient(MONGO_URI)
+# Configure MongoDB client with 5-minute timeout
+client = MongoClient(
+    MONGO_URI,
+    serverSelectionTimeoutMS=300000,  # 5 minutes
+    socketTimeoutMS=300000  # 5 minutes
+)
 db = client[DATABASE_NAME]
 products_collection = db['products']
 
@@ -452,6 +457,51 @@ def products_modified():
 
     except Exception as e:
         error_logger.error(f"Error in /products/modified endpoint: {str(e)}")
+        error_logger.error(traceback.format_exc())
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
+
+# ==================== /products/stats Endpoint ====================
+@app.route('/products/stats', methods=['GET'])
+def products_stats():
+    """
+    Returns summary statistics about products:
+    - Total products count
+    - Total new products (added in last 24 hours)
+    - Total modified products (modified in last 2 days)
+    """
+    try:
+        connection_logger.info(f"Accessed /products/stats endpoint")
+
+        # Get total products count
+        total_products = products_collection.count_documents({})
+
+        # Get new products count (last 24 hours)
+        yesterday = datetime.now() - timedelta(days=1)
+        total_new_products = products_collection.count_documents({
+            'DateAjout': {'$gte': yesterday}
+        })
+
+        # Get modified products count (last 2 days)
+        two_days_ago = datetime.now() - timedelta(days=2)
+        total_modified_products = products_collection.count_documents({
+            'Modifications.dateModification': {'$gte': two_days_ago}
+        })
+
+        response_data = {
+            'total_products': total_products,
+            'total_new_products': total_new_products,
+            'total_modified_products': total_modified_products
+        }
+
+        connection_logger.info(f"Successfully retrieved product stats")
+
+        response = make_response(jsonify(response_data), 200)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+
+    except Exception as e:
+        error_logger.error(f"Error in /products/stats endpoint: {str(e)}")
         error_logger.error(traceback.format_exc())
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
