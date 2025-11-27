@@ -567,12 +567,12 @@ def products_stats():
     """
     Returns summary statistics about products:
     - Total products count
-    - Total new products (added in last 24 hours)
-    - Total modified products (modified in last 24 hours)
+    - Total new products (added today from 00:00:00)
+    - Total modified products (modified today from 00:00:00)
     - Stock status counts (in stock, on order, out of stock) for:
       * All products
-      * New products (last 24 hours)
-      * Modified products (last 24 hours)
+      * New products (today)
+      * Modified products (today)
     """
     try:
         connection_logger.info(f"Accessed /products/stats endpoint")
@@ -580,22 +580,21 @@ def products_stats():
         # Get total products count
         total_products = products_collection.count_documents({})
 
-        # Get new products count (last 24 hours)
-        # Use the same logic as /products/new endpoint
-        yesterday = datetime.now() - timedelta(days=1)
+        # Get new products count (today - from midnight 00:00:00)
+        # This matches the behavior when filtering by today's date
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Count only products with valid DateAjout field (not null, not missing)
-        # This matches the behavior of /products/new when no filters are applied
         total_new_products = products_collection.count_documents({
-            'DateAjout': {'$type': 'date', '$gte': yesterday}
+            'DateAjout': {'$type': 'date', '$gte': today_start}
         })
 
-        # Get modified products count (last 24 hours - since yesterday)
-        # Use aggregation to properly count products with modifications in the last 24 hours
+        # Get modified products count (today - from midnight 00:00:00)
+        # Use aggregation to properly count products with modifications today
         pipeline = [
             {'$match': {'Modifications': {'$exists': True, '$ne': []}}},
             {'$unwind': '$Modifications'},
-            {'$match': {'Modifications.dateModification': {'$gte': yesterday}}},
+            {'$match': {'Modifications.dateModification': {'$gte': today_start}}},
             {'$group': {'_id': '$_id'}},
             {'$count': 'total'}
         ]
@@ -614,28 +613,27 @@ def products_stats():
             'Stock': {'$regex': '^out of stock$', '$options': 'i'}
         })
 
-        # Get stock status counts for new products (last 24 hours)
-        # Use the same query logic as /products/new endpoint with type validation
+        # Get stock status counts for new products (today from midnight)
         new_in_stock = products_collection.count_documents({
-            'DateAjout': {'$type': 'date', '$gte': yesterday},
+            'DateAjout': {'$type': 'date', '$gte': today_start},
             'Stock': {'$regex': '^in stock$', '$options': 'i'}
         })
         new_on_order = products_collection.count_documents({
-            'DateAjout': {'$type': 'date', '$gte': yesterday},
+            'DateAjout': {'$type': 'date', '$gte': today_start},
             'Stock': {'$regex': '^on order$', '$options': 'i'}
         })
         new_out_of_stock = products_collection.count_documents({
-            'DateAjout': {'$type': 'date', '$gte': yesterday},
+            'DateAjout': {'$type': 'date', '$gte': today_start},
             'Stock': {'$regex': '^out of stock$', '$options': 'i'}
         })
 
-        # Get stock status counts for modified products (last 24 hours)
+        # Get stock status counts for modified products (today from midnight)
         # Use aggregation for accurate counting
         def count_modified_by_stock(stock_regex):
             pipeline = [
                 {'$match': {'Modifications': {'$exists': True, '$ne': []}}},
                 {'$unwind': '$Modifications'},
-                {'$match': {'Modifications.dateModification': {'$gte': yesterday}}},
+                {'$match': {'Modifications.dateModification': {'$gte': today_start}}},
                 {'$group': {'_id': '$_id', 'Stock': {'$first': '$Stock'}}},
                 {'$match': {'Stock': {'$regex': stock_regex, '$options': 'i'}}},
                 {'$count': 'total'}
