@@ -222,11 +222,48 @@ def products():
         for product in products:
             product['_id'] = str(product['_id'])
 
+        # Get additional statistics based on current query
+        yesterday = datetime.now() - timedelta(days=1)
+        two_days_ago = datetime.now() - timedelta(days=2)
+
+        # Count new products (added in last 24 hours) that match the query
+        total_new_products = products_collection.count_documents({
+            **query,
+            'DateAjout': {'$gte': yesterday}
+        })
+
+        # Count modified products (modified in last 2 days) that match the query
+        total_modified_products = products_collection.count_documents({
+            **query,
+            'Modifications.dateModification': {'$gte': two_days_ago}
+        })
+
+        # Get stock status counts based on current query
+        total_in_stock = products_collection.count_documents({
+            **query,
+            'Stock': {'$regex': '^in stock$', '$options': 'i'}
+        })
+        total_on_order = products_collection.count_documents({
+            **query,
+            'Stock': {'$regex': '^on order$', '$options': 'i'}
+        })
+        total_out_of_stock = products_collection.count_documents({
+            **query,
+            'Stock': {'$regex': '^out of stock$', '$options': 'i'}
+        })
+
         response_data = {
             'total_products': total_products,
+            'total_new_products': total_new_products,
+            'total_modified_products': total_modified_products,
             'total_pages': total_pages,
             'current_page': page,
             'products_per_page': products_per_page,
+            'stock_status': {
+                'in_stock': total_in_stock,
+                'on_order': total_on_order,
+                'out_of_stock': total_out_of_stock
+            },
             'products': products
         }
 
@@ -335,11 +372,30 @@ def products_new():
         for product in products:
             product['_id'] = str(product['_id'])
 
+        # Get stock status counts for new products
+        in_stock_count = products_collection.count_documents({
+            **query,
+            'Stock': {'$regex': '^in stock$', '$options': 'i'}
+        })
+        on_order_count = products_collection.count_documents({
+            **query,
+            'Stock': {'$regex': '^on order$', '$options': 'i'}
+        })
+        out_of_stock_count = products_collection.count_documents({
+            **query,
+            'Stock': {'$regex': '^out of stock$', '$options': 'i'}
+        })
+
         response_data = {
             'total_products': total_products,
             'total_pages': total_pages,
             'current_page': page,
             'products_per_page': products_per_page,
+            'stock_status': {
+                'in_stock': in_stock_count,
+                'on_order': on_order_count,
+                'out_of_stock': out_of_stock_count
+            },
             'products': products
         }
 
@@ -457,11 +513,30 @@ def products_modified():
         for product in products:
             product['_id'] = str(product['_id'])
 
+        # Get stock status counts for modified products
+        in_stock_count = products_collection.count_documents({
+            **query,
+            'Stock': {'$regex': '^in stock$', '$options': 'i'}
+        })
+        on_order_count = products_collection.count_documents({
+            **query,
+            'Stock': {'$regex': '^on order$', '$options': 'i'}
+        })
+        out_of_stock_count = products_collection.count_documents({
+            **query,
+            'Stock': {'$regex': '^out of stock$', '$options': 'i'}
+        })
+
         response_data = {
             'total_products': total_products,
             'total_pages': total_pages,
             'current_page': page,
             'products_per_page': products_per_page,
+            'stock_status': {
+                'in_stock': in_stock_count,
+                'on_order': on_order_count,
+                'out_of_stock': out_of_stock_count
+            },
             'products': products
         }
 
@@ -485,6 +560,10 @@ def products_stats():
     - Total products count
     - Total new products (added in last 24 hours)
     - Total modified products (modified in last 2 days)
+    - Stock status counts (in stock, on order, out of stock) for:
+      * All products
+      * New products
+      * Modified products
     """
     try:
         connection_logger.info(f"Accessed /products/stats endpoint")
@@ -504,10 +583,64 @@ def products_stats():
             'Modifications.dateModification': {'$gte': two_days_ago}
         })
 
+        # Get stock status counts for all products
+        total_in_stock = products_collection.count_documents({
+            'Stock': {'$regex': '^in stock$', '$options': 'i'}
+        })
+        total_on_order = products_collection.count_documents({
+            'Stock': {'$regex': '^on order$', '$options': 'i'}
+        })
+        total_out_of_stock = products_collection.count_documents({
+            'Stock': {'$regex': '^out of stock$', '$options': 'i'}
+        })
+
+        # Get stock status counts for new products
+        new_in_stock = products_collection.count_documents({
+            'DateAjout': {'$gte': yesterday},
+            'Stock': {'$regex': '^in stock$', '$options': 'i'}
+        })
+        new_on_order = products_collection.count_documents({
+            'DateAjout': {'$gte': yesterday},
+            'Stock': {'$regex': '^on order$', '$options': 'i'}
+        })
+        new_out_of_stock = products_collection.count_documents({
+            'DateAjout': {'$gte': yesterday},
+            'Stock': {'$regex': '^out of stock$', '$options': 'i'}
+        })
+
+        # Get stock status counts for modified products
+        modified_in_stock = products_collection.count_documents({
+            'Modifications.dateModification': {'$gte': two_days_ago},
+            'Stock': {'$regex': '^in stock$', '$options': 'i'}
+        })
+        modified_on_order = products_collection.count_documents({
+            'Modifications.dateModification': {'$gte': two_days_ago},
+            'Stock': {'$regex': '^on order$', '$options': 'i'}
+        })
+        modified_out_of_stock = products_collection.count_documents({
+            'Modifications.dateModification': {'$gte': two_days_ago},
+            'Stock': {'$regex': '^out of stock$', '$options': 'i'}
+        })
+
         response_data = {
             'total_products': total_products,
             'total_new_products': total_new_products,
-            'total_modified_products': total_modified_products
+            'total_modified_products': total_modified_products,
+            'total_stock_status': {
+                'in_stock': total_in_stock,
+                'on_order': total_on_order,
+                'out_of_stock': total_out_of_stock
+            },
+            'new_products_stock_status': {
+                'in_stock': new_in_stock,
+                'on_order': new_on_order,
+                'out_of_stock': new_out_of_stock
+            },
+            'modified_products_stock_status': {
+                'in_stock': modified_in_stock,
+                'on_order': modified_on_order,
+                'out_of_stock': modified_out_of_stock
+            }
         }
 
         connection_logger.info(f"Successfully retrieved product stats")
