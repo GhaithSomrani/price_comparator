@@ -122,6 +122,7 @@ def products():
         price_min = request.args.get('price_min', type=float)
         price_max = request.args.get('price_max', type=float)
         brand = request.args.get('brand', '')
+        stock = request.args.get('stock', '')
         company = request.args.get('company', '')
         category = request.args.get('category', '')
         subcategory = request.args.get('subcategory', '')
@@ -172,6 +173,8 @@ def products():
             query['Designation'] = {'$regex': designation, '$options': 'i'}
         if brand:
             query['Brand'] = {'$regex': brand, '$options': 'i'}
+        if stock:
+            query['Stock'] = {'$regex': stock, '$options': 'i'}
         if company:
             query['Company'] = {'$regex': company, '$options': 'i'}
         if category:
@@ -250,6 +253,7 @@ def products_new():
         price_min = request.args.get('price_min', type=float)
         price_max = request.args.get('price_max', type=float)
         brand = request.args.get('brand', '')
+        stock = request.args.get('stock', '')
         company = request.args.get('company', '')
         category = request.args.get('category', '')
         subcategory = request.args.get('subcategory', '')
@@ -281,6 +285,8 @@ def products_new():
             query['Designation'] = {'$regex': designation, '$options': 'i'}
         if brand:
             query['Brand'] = {'$regex': brand, '$options': 'i'}
+        if stock:
+            query['Stock'] = {'$regex': stock, '$options': 'i'}
         if company:
             query['Company'] = {'$regex': company, '$options': 'i'}
         if category:
@@ -360,6 +366,7 @@ def products_modified():
         price_min = request.args.get('price_min', type=float)
         price_max = request.args.get('price_max', type=float)
         brand = request.args.get('brand', '')
+        stock = request.args.get('stock', '')
         company = request.args.get('company', '')
         category = request.args.get('category', '')
         subcategory = request.args.get('subcategory', '')
@@ -398,6 +405,8 @@ def products_modified():
             query['Designation'] = {'$regex': designation, '$options': 'i'}
         if brand:
             query['Brand'] = {'$regex': brand, '$options': 'i'}
+        if stock:
+            query['Stock'] = {'$regex': stock, '$options': 'i'}
         if company:
             query['Company'] = {'$regex': company, '$options': 'i'}
         if category:
