@@ -70,13 +70,15 @@ def add_price_modification_history():
             # Calculate random percentage change (-8% to +8%)
             percentage_change = random.uniform(-8, 8)
 
-            # Calculate old price (reverse the percentage to get original)
-            # If current price is after change, old price = current / (1 + percentage/100)
-            # But we want to add history, so old_price is current, new_price is calculated
+            # Current price becomes the old price, calculate new price
             old_price = current_price
             new_price = round(old_price * (1 + percentage_change / 100), 2)
 
-            # Create modification record
+            # Ensure new price is positive
+            if new_price <= 0:
+                new_price = old_price
+
+            # Create modification record with old date
             modification_record = {
                 'dateModification': modification_date,
                 'oldPrice': old_price,
@@ -84,18 +86,23 @@ def add_price_modification_history():
                 'percentageChange': round(percentage_change, 2)
             }
 
-            # Add modification to product's Modifications array
+            # Add modification to history AND update current price to new price
             result = products_collection.update_one(
                 {'_id': product_id},
                 {
                     '$push': {
                         'Modifications': modification_record
+                    },
+                    '$set': {
+                        'Price': new_price  # Update current price to the new price
                     }
                 }
             )
 
             if result.modified_count > 0:
                 total_modifications += 1
+                # Update the product in our local list for next iteration
+                product['Price'] = new_price
 
         logger.info(f"Day -{day_offset}: Successfully added {num_products_to_modify} modifications")
 
