@@ -160,18 +160,173 @@ def get_modification_stats():
         logger.info("No statistics available")
 
 
+def distribute_product_dates():
+    """
+    Randomly distribute product DateAjout across the last 30 days.
+    - Each day gets 20-80 random products
+    - Updates existing products' DateAjout field
+    """
+    logger.info("Starting to distribute product dates...")
+
+    # Get all products from database
+    all_products = list(products_collection.find({}))
+    total_products = len(all_products)
+
+    if total_products == 0:
+        logger.warning("No products found in database!")
+        return
+
+    logger.info(f"Found {total_products} products in database")
+
+    # Shuffle products to randomize selection
+    random.shuffle(all_products)
+
+    # Track which products have been assigned
+    product_index = 0
+    total_updated = 0
+
+    # Process each day for the last 30 days
+    for day_offset in range(30, 0, -1):  # 30 days ago to 1 day ago
+        # Calculate the date for this day
+        date_ajout = datetime.now() - timedelta(days=day_offset)
+        date_ajout = date_ajout.replace(
+            hour=random.randint(6, 22),  # Random hour between 6 AM and 10 PM
+            minute=random.randint(0, 59),
+            second=random.randint(0, 59),
+            microsecond=0
+        )
+
+        # Randomly select number of products for this day (20 to 80)
+        num_products_for_day = random.randint(20, min(80, total_products - product_index))
+
+        if num_products_for_day <= 0:
+            logger.info(f"Day -{day_offset}: No more products to assign")
+            break
+
+        logger.info(f"Day -{day_offset}: Assigning {num_products_for_day} products to {date_ajout.strftime('%Y-%m-%d %H:%M:%S')}")
+
+        # Update products for this day
+        day_updated = 0
+        for i in range(num_products_for_day):
+            if product_index >= total_products:
+                break
+
+            product = all_products[product_index]
+            product_id = product['_id']
+
+            # Add some randomness to the time for each product (within the same day)
+            product_date = date_ajout + timedelta(
+                hours=random.randint(0, 12),
+                minutes=random.randint(0, 59),
+                seconds=random.randint(0, 59)
+            )
+
+            # Update the DateAjout field
+            result = products_collection.update_one(
+                {'_id': product_id},
+                {
+                    '$set': {
+                        'DateAjout': product_date
+                    }
+                }
+            )
+
+            if result.modified_count > 0:
+                day_updated += 1
+                total_updated += 1
+
+            product_index += 1
+
+        logger.info(f"Day -{day_offset}: Successfully updated {day_updated} products")
+
+    logger.info(f"Completed! Total products updated: {total_updated}")
+    logger.info(f"Average products per day: {total_updated / 30:.2f}")
+
+    # Update remaining products to today's date if any
+    if product_index < total_products:
+        remaining = total_products - product_index
+        logger.info(f"Updating {remaining} remaining products to today's date...")
+
+        for i in range(product_index, total_products):
+            product = all_products[i]
+            today_date = datetime.now().replace(
+                hour=random.randint(6, 22),
+                minute=random.randint(0, 59),
+                second=random.randint(0, 59),
+                microsecond=0
+            )
+
+            products_collection.update_one(
+                {'_id': product['_id']},
+                {'$set': {'DateAjout': today_date}}
+            )
+
+        logger.info(f"Updated {remaining} remaining products")
+
+
+def get_dateajout_stats():
+    """
+    Get statistics about product DateAjout distribution.
+    """
+    logger.info("Calculating DateAjout statistics...")
+
+    # Get date range
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+
+    # Count products by date
+    pipeline = [
+        {
+            '$match': {
+                'DateAjout': {'$gte': thirty_days_ago}
+            }
+        },
+        {
+            '$group': {
+                '_id': {
+                    '$dateToString': {
+                        'format': '%Y-%m-%d',
+                        'date': '$DateAjout'
+                    }
+                },
+                'count': {'$sum': 1}
+            }
+        },
+        {'$sort': {'_id': 1}}
+    ]
+
+    result = list(products_collection.aggregate(pipeline))
+
+    total_count = products_collection.count_documents({})
+    new_count = products_collection.count_documents({'DateAjout': {'$gte': thirty_days_ago}})
+
+    logger.info(f"Total products in database: {total_count}")
+    logger.info(f"Products added in last 30 days: {new_count}")
+    logger.info(f"Products added per day:")
+
+    for item in result:
+        logger.info(f"  {item['_id']}: {item['count']} products")
+
+    if result:
+        avg_per_day = sum(item['count'] for item in result) / len(result)
+        logger.info(f"Average products per day: {avg_per_day:.2f}")
+
+
 if __name__ == '__main__':
     print("=" * 60)
-    print("Product Modification History Generator")
+    print("Product Data Manipulation Tool")
     print("=" * 60)
     print()
-    print("Options:")
+    print("Modification History Options:")
     print("1. Add price modification history (last 30 days)")
     print("2. Clear all modifications")
     print("3. Get modification statistics")
     print()
+    print("Product Date Options:")
+    print("4. Distribute product dates (last 30 days)")
+    print("5. Get DateAjout statistics")
+    print()
 
-    choice = input("Enter your choice (1-3): ").strip()
+    choice = input("Enter your choice (1-5): ").strip()
 
     if choice == '1':
         confirm = input("This will add modifications to 20-80 random products per day for 30 days. Continue? (yes/no): ").strip().lower()
@@ -189,6 +344,16 @@ if __name__ == '__main__':
 
     elif choice == '3':
         get_modification_stats()
+
+    elif choice == '4':
+        confirm = input("This will update DateAjout for ALL products, distributing them across 30 days (20-80 per day). Continue? (yes/no): ").strip().lower()
+        if confirm == 'yes':
+            distribute_product_dates()
+        else:
+            print("Operation cancelled.")
+
+    elif choice == '5':
+        get_dateajout_stats()
 
     else:
         print("Invalid choice!")
