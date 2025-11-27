@@ -144,9 +144,11 @@ def products():
             try:
                 if dateajout_min:
                     min_date = datetime.fromisoformat(dateajout_min.replace('Z', '+00:00'))
+                    min_date = min_date.replace(hour=0, minute=0, second=0, microsecond=0)
                     date_query['$gte'] = min_date
                 if dateajout_max:
                     max_date = datetime.fromisoformat(dateajout_max.replace('Z', '+00:00'))
+                    max_date = max_date.replace(hour=23, minute=59, second=59, microsecond=999999)
                     date_query['$lte'] = max_date
                 query['DateAjout'] = date_query
             except ValueError:
@@ -158,9 +160,11 @@ def products():
             try:
                 if datemodification_min:
                     min_date = datetime.fromisoformat(datemodification_min.replace('Z', '+00:00'))
+                    min_date = min_date.replace(hour=0, minute=0, second=0, microsecond=0)
                     modification_query['$gte'] = min_date
                 if datemodification_max:
                     max_date = datetime.fromisoformat(datemodification_max.replace('Z', '+00:00'))
+                    max_date = max_date.replace(hour=23, minute=59, second=59, microsecond=999999)
                     modification_query['$lte'] = max_date
                 query['Modifications.dateModification'] = modification_query
             except ValueError:
@@ -270,6 +274,7 @@ def products_new():
         if dateajout_min:
             try:
                 min_date = datetime.fromisoformat(dateajout_min.replace('Z', '+00:00'))
+                min_date = min_date.replace(hour=0, minute=0, second=0, microsecond=0)
                 query['DateAjout'] = {'$gte': min_date}
             except ValueError:
                 return jsonify({'error': 'Invalid date format for dateajout_min'}), 400
@@ -386,9 +391,11 @@ def products_modified():
             try:
                 if modification_date_min:
                     min_date = datetime.fromisoformat(modification_date_min.replace('Z', '+00:00'))
+                    min_date = min_date.replace(hour=0, minute=0, second=0, microsecond=0)
                     modification_query['$gte'] = min_date
                 if modification_date_max:
                     max_date = datetime.fromisoformat(modification_date_max.replace('Z', '+00:00'))
+                    max_date = max_date.replace(hour=23, minute=59, second=59, microsecond=999999)
                     modification_query['$lte'] = max_date
                 query['Modifications.dateModification'] = modification_query
             except ValueError:
