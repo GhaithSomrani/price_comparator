@@ -22,21 +22,23 @@ logger = logging.getLogger(__name__)
 def add_price_modification_history():
     """
     Add price modification history to random products over the last 30 days.
+    - Only selects products with price > 30
     - Randomly selects 20-80 products per day
-    - Changes price by -8% to +8%
+    - Creates fake modification history (current price stays the same)
+    - Old prices are integers and multiples of 5
     - Creates modification records for each day in the last 30 days
     """
     logger.info("Starting to add price modification history...")
 
-    # Get all products from database
-    all_products = list(products_collection.find({}))
+    # Get all products from database with price > 30
+    all_products = list(products_collection.find({'Price': {'$gt': 30}}))
     total_products = len(all_products)
 
     if total_products == 0:
-        logger.warning("No products found in database!")
+        logger.warning("No products found in database with price > 30!")
         return
 
-    logger.info(f"Found {total_products} products in database")
+    logger.info(f"Found {total_products} products in database with price > 30")
 
     # Process each day for the last 30 days
     total_modifications = 0
@@ -70,39 +72,45 @@ def add_price_modification_history():
             # Calculate random percentage change (-8% to +8%)
             percentage_change = random.uniform(-8, 8)
 
-            # Current price becomes the old price, calculate new price
-            old_price = current_price
-            new_price = round(old_price * (1 + percentage_change / 100), 2)
+            # Calculate old price by reversing the percentage
+            # If new price is current price, old price = current / (1 + percentage/100)
+            # This creates fake history: old_price -> changed by percentage -> current_price
+            new_price = current_price  # New price is the current price
+            calculated_old_price = current_price / (1 + percentage_change / 100)
 
-            # Ensure new price is positive
-            if new_price <= 0:
-                new_price = old_price
+            # Round to nearest multiple of 5 and convert to integer
+            old_price = int(round(calculated_old_price / 5) * 5)
+
+            # Ensure old price is positive and at least 5
+            if old_price <= 0:
+                old_price = int(round(current_price * 0.95 / 5) * 5)
+            if old_price < 5:
+                old_price = 5
+
+            # Recalculate actual percentage change based on rounded old price
+            actual_percentage_change = ((new_price - old_price) / old_price) * 100
 
             # Create modification record with old date
+            # This represents: "on this old date, price changed from old_price to current_price"
             modification_record = {
                 'dateModification': modification_date,
                 'oldPrice': old_price,
                 'newPrice': new_price,
-                'percentageChange': round(percentage_change, 2)
+                'percentageChange': round(actual_percentage_change, 2)
             }
 
-            # Add modification to history AND update current price to new price
+            # Add modification to history ONLY (don't change current price)
             result = products_collection.update_one(
                 {'_id': product_id},
                 {
                     '$push': {
                         'Modifications': modification_record
-                    },
-                    '$set': {
-                        'Price': new_price  # Update current price to the new price
                     }
                 }
             )
 
             if result.modified_count > 0:
                 total_modifications += 1
-                # Update the product in our local list for next iteration
-                product['Price'] = new_price
 
         logger.info(f"Day -{day_offset}: Successfully added {num_products_to_modify} modifications")
 
@@ -336,7 +344,7 @@ if __name__ == '__main__':
     choice = input("Enter your choice (1-5): ").strip()
 
     if choice == '1':
-        confirm = input("This will add modifications to 20-80 random products per day for 30 days. Continue? (yes/no): ").strip().lower()
+        confirm = input("This will add fake modification history to 20-80 random products (price > 30) per day for 30 days.\nOld prices will be integers and multiples of 5. Continue? (yes/no): ").strip().lower()
         if confirm == 'yes':
             add_price_modification_history()
         else:
