@@ -363,7 +363,7 @@ if __name__ == '__main__':
         get_modification_stats()
 
     elif choice == '4':
-        confirm = input("This will update DateAjout for ALL products, distributing them across 30 days (20-80 per day). Continue? (yes/no): ").strip().lower()
+        confirm = input("This will:\n1. Set ALL products to -30 days ago\n2. Then distribute 20-80 products per day across the 30-day period\nContinue? (yes/no): ").strip().lower()
         if confirm == 'yes':
             distribute_product_dates()
         else:
