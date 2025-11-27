@@ -178,9 +178,11 @@ def get_modification_stats():
 def distribute_product_dates():
     """
     Randomly distribute product DateAjout across the last 30 days.
-    - First sets all products to -30 days ago
-    - Then distributes them across the 30-day period
-    - Each day gets 20-80 random products
+    - Step 1: Sets all products to -30 days ago
+    - Step 2: Distributes them across the 30-day period (20-80 per day)
+    - Step 3: Cleans up modifications that occurred before product was added
+
+    This prevents products from showing as "new" but having old modifications.
     """
     logger.info("Starting to distribute product dates...")
 
@@ -280,6 +282,35 @@ def distribute_product_dates():
     else:
         logger.info("All products have been redistributed across the 30-day period")
 
+    # Step 3: Clean up modifications that occurred before product was added
+    logger.info("Step 3: Cleaning up invalid modifications...")
+    cleaned_count = 0
+
+    for product in all_products:
+        product_id = product['_id']
+        date_ajout = product.get('DateAjout')
+        modifications = product.get('Modifications', [])
+
+        if not date_ajout or not modifications:
+            continue
+
+        # Filter out modifications that happened before the product was added
+        valid_modifications = [
+            mod for mod in modifications
+            if mod.get('dateModification') and mod.get('dateModification') >= date_ajout
+        ]
+
+        # If modifications were removed, update the product
+        if len(valid_modifications) < len(modifications):
+            products_collection.update_one(
+                {'_id': product_id},
+                {'$set': {'Modifications': valid_modifications}}
+            )
+            cleaned_count += 1
+
+    logger.info(f"Cleaned invalid modifications from {cleaned_count} products")
+    logger.info("Date distribution completed successfully!")
+
 
 def get_dateajout_stats():
     """
@@ -363,7 +394,7 @@ if __name__ == '__main__':
         get_modification_stats()
 
     elif choice == '4':
-        confirm = input("This will:\n1. Set ALL products to -30 days ago\n2. Then distribute 20-80 products per day across the 30-day period\nContinue? (yes/no): ").strip().lower()
+        confirm = input("This will:\n1. Set ALL products to -30 days ago\n2. Distribute 20-80 products per day across the 30-day period\n3. Clean up modifications that occurred before products were added\nContinue? (yes/no): ").strip().lower()
         if confirm == 'yes':
             distribute_product_dates()
         else:
