@@ -178,8 +178,9 @@ def get_modification_stats():
 def distribute_product_dates():
     """
     Randomly distribute product DateAjout across the last 30 days.
+    - First sets all products to -30 days ago
+    - Then distributes them across the 30-day period
     - Each day gets 20-80 random products
-    - Updates existing products' DateAjout field
     """
     logger.info("Starting to distribute product dates...")
 
@@ -192,6 +193,20 @@ def distribute_product_dates():
         return
 
     logger.info(f"Found {total_products} products in database")
+
+    # Step 1: Set all products to -30 days ago
+    logger.info("Step 1: Setting all products to -30 days ago...")
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    thirty_days_ago = thirty_days_ago.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    result = products_collection.update_many(
+        {},
+        {'$set': {'DateAjout': thirty_days_ago}}
+    )
+    logger.info(f"Set {result.modified_count} products to -30 days ago")
+
+    # Step 2: Distribute products across 30 days
+    logger.info("Step 2: Distributing products across 30 days...")
 
     # Shuffle products to randomize selection
     random.shuffle(all_products)
@@ -254,29 +269,16 @@ def distribute_product_dates():
 
         logger.info(f"Day -{day_offset}: Successfully updated {day_updated} products")
 
-    logger.info(f"Completed! Total products updated: {total_updated}")
+    logger.info(f"Completed! Total products redistributed: {total_updated}")
     logger.info(f"Average products per day: {total_updated / 30:.2f}")
 
-    # Update remaining products to today's date if any
+    # Check if there are remaining products (they will stay at -30 days)
     if product_index < total_products:
         remaining = total_products - product_index
-        logger.info(f"Updating {remaining} remaining products to today's date...")
-
-        for i in range(product_index, total_products):
-            product = all_products[i]
-            today_date = datetime.now().replace(
-                hour=random.randint(6, 22),
-                minute=random.randint(0, 59),
-                second=random.randint(0, 59),
-                microsecond=0
-            )
-
-            products_collection.update_one(
-                {'_id': product['_id']},
-                {'$set': {'DateAjout': today_date}}
-            )
-
-        logger.info(f"Updated {remaining} remaining products")
+        logger.info(f"{remaining} products remain at -30 days ago (not redistributed)")
+        logger.info(f"Products at -30 days: {remaining}")
+    else:
+        logger.info("All products have been redistributed across the 30-day period")
 
 
 def get_dateajout_stats():
