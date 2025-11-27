@@ -568,11 +568,11 @@ def products_stats():
     Returns summary statistics about products:
     - Total products count
     - Total new products (added in last 24 hours)
-    - Total modified products (modified in last 2 days)
+    - Total modified products (modified in last 24 hours)
     - Stock status counts (in stock, on order, out of stock) for:
       * All products
-      * New products
-      * Modified products
+      * New products (last 24 hours)
+      * Modified products (last 24 hours)
     """
     try:
         connection_logger.info(f"Accessed /products/stats endpoint")
@@ -586,11 +586,18 @@ def products_stats():
             'DateAjout': {'$gte': yesterday}
         })
 
-        # Get modified products count (last 2 days)
-        two_days_ago = datetime.now() - timedelta(days=2)
-        total_modified_products = products_collection.count_documents({
-            'Modifications.dateModification': {'$gte': two_days_ago}
-        })
+        # Get modified products count (last 24 hours - since yesterday)
+        # Use aggregation to properly count products with modifications in the last 24 hours
+        pipeline = [
+            {'$match': {'Modifications': {'$exists': True, '$ne': []}}},
+            {'$unwind': '$Modifications'},
+            {'$match': {'Modifications.dateModification': {'$gte': yesterday}}},
+            {'$group': {'_id': '$_id'}},
+            {'$count': 'total'}
+        ]
+
+        modified_result = list(products_collection.aggregate(pipeline))
+        total_modified_products = modified_result[0]['total'] if modified_result else 0
 
         # Get stock status counts for all products
         total_in_stock = products_collection.count_documents({
@@ -617,19 +624,23 @@ def products_stats():
             'Stock': {'$regex': '^out of stock$', '$options': 'i'}
         })
 
-        # Get stock status counts for modified products
-        modified_in_stock = products_collection.count_documents({
-            'Modifications.dateModification': {'$gte': two_days_ago},
-            'Stock': {'$regex': '^in stock$', '$options': 'i'}
-        })
-        modified_on_order = products_collection.count_documents({
-            'Modifications.dateModification': {'$gte': two_days_ago},
-            'Stock': {'$regex': '^on order$', '$options': 'i'}
-        })
-        modified_out_of_stock = products_collection.count_documents({
-            'Modifications.dateModification': {'$gte': two_days_ago},
-            'Stock': {'$regex': '^out of stock$', '$options': 'i'}
-        })
+        # Get stock status counts for modified products (last 24 hours)
+        # Use aggregation for accurate counting
+        def count_modified_by_stock(stock_regex):
+            pipeline = [
+                {'$match': {'Modifications': {'$exists': True, '$ne': []}}},
+                {'$unwind': '$Modifications'},
+                {'$match': {'Modifications.dateModification': {'$gte': yesterday}}},
+                {'$group': {'_id': '$_id', 'Stock': {'$first': '$Stock'}}},
+                {'$match': {'Stock': {'$regex': stock_regex, '$options': 'i'}}},
+                {'$count': 'total'}
+            ]
+            result = list(products_collection.aggregate(pipeline))
+            return result[0]['total'] if result else 0
+
+        modified_in_stock = count_modified_by_stock('^in stock$')
+        modified_on_order = count_modified_by_stock('^on order$')
+        modified_out_of_stock = count_modified_by_stock('^out of stock$')
 
         response_data = {
             'total_products': total_products,
