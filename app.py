@@ -582,9 +582,17 @@ def products_stats():
 
         # Get new products count (last 24 hours)
         yesterday = datetime.now() - timedelta(days=1)
-        total_new_products = products_collection.count_documents({
-            'DateAjout': {'$gte': yesterday}
-        })
+
+        # Use aggregation to ensure DateAjout exists and is valid
+        new_products_pipeline = [
+            {'$match': {
+                'DateAjout': {'$exists': True, '$ne': None, '$gte': yesterday}
+            }},
+            {'$count': 'total'}
+        ]
+
+        new_result = list(products_collection.aggregate(new_products_pipeline))
+        total_new_products = new_result[0]['total'] if new_result else 0
 
         # Get modified products count (last 24 hours - since yesterday)
         # Use aggregation to properly count products with modifications in the last 24 hours
@@ -610,19 +618,22 @@ def products_stats():
             'Stock': {'$regex': '^out of stock$', '$options': 'i'}
         })
 
-        # Get stock status counts for new products
-        new_in_stock = products_collection.count_documents({
-            'DateAjout': {'$gte': yesterday},
-            'Stock': {'$regex': '^in stock$', '$options': 'i'}
-        })
-        new_on_order = products_collection.count_documents({
-            'DateAjout': {'$gte': yesterday},
-            'Stock': {'$regex': '^on order$', '$options': 'i'}
-        })
-        new_out_of_stock = products_collection.count_documents({
-            'DateAjout': {'$gte': yesterday},
-            'Stock': {'$regex': '^out of stock$', '$options': 'i'}
-        })
+        # Get stock status counts for new products (last 24 hours)
+        # Use aggregation for accurate counting
+        def count_new_by_stock(stock_regex):
+            pipeline = [
+                {'$match': {
+                    'DateAjout': {'$exists': True, '$ne': None, '$gte': yesterday},
+                    'Stock': {'$regex': stock_regex, '$options': 'i'}
+                }},
+                {'$count': 'total'}
+            ]
+            result = list(products_collection.aggregate(pipeline))
+            return result[0]['total'] if result else 0
+
+        new_in_stock = count_new_by_stock('^in stock$')
+        new_on_order = count_new_by_stock('^on order$')
+        new_out_of_stock = count_new_by_stock('^out of stock$')
 
         # Get stock status counts for modified products (last 24 hours)
         # Use aggregation for accurate counting
@@ -698,7 +709,7 @@ def stats():
             pipeline = [
                 {
                     '$project': {
-                        'Designation': 1,
+                        'Ref': 1,
                         'modifications_count': {'$size': {'$ifNull': ['$Modifications', []]}}
                     }
                 },
