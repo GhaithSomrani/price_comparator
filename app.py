@@ -171,10 +171,13 @@ def products():
                 return jsonify({'error': 'Invalid date format for modification dates'}), 400
 
         # Text filters (partial matches with case-insensitive regex)
-        if ref:
-            query['Ref'] = {'$regex': ref, '$options': 'i'}
-        if designation:
-            query['Designation'] = {'$regex': designation, '$options': 'i'}
+        # Ref and Designation use OR logic (search in both fields)
+        if ref or designation:
+            search_term = ref or designation
+            query['$or'] = [
+                {'Ref': {'$regex': search_term, '$options': 'i'}},
+                {'Designation': {'$regex': search_term, '$options': 'i'}}
+            ]
         if brand:
             query['Brand'] = {'$regex': brand, '$options': 'i'}
         if stock:
@@ -321,10 +324,13 @@ def products_new():
             query['DateAjout'] = {'$gte': yesterday}
 
         # Text filters
-        if ref:
-            query['Ref'] = {'$regex': ref, '$options': 'i'}
-        if designation:
-            query['Designation'] = {'$regex': designation, '$options': 'i'}
+        # Ref and Designation use OR logic (search in both fields)
+        if ref or designation:
+            search_term = ref or designation
+            query['$or'] = [
+                {'Ref': {'$regex': search_term, '$options': 'i'}},
+                {'Designation': {'$regex': search_term, '$options': 'i'}}
+            ]
         if brand:
             query['Brand'] = {'$regex': brand, '$options': 'i'}
         if stock:
@@ -462,10 +468,13 @@ def products_modified():
             query['Modifications.dateModification'] = {'$gte': two_days_ago}
 
         # Text filters
-        if ref:
-            query['Ref'] = {'$regex': ref, '$options': 'i'}
-        if designation:
-            query['Designation'] = {'$regex': designation, '$options': 'i'}
+        # Ref and Designation use OR logic (search in both fields)
+        if ref or designation:
+            search_term = ref or designation
+            query['$or'] = [
+                {'Ref': {'$regex': search_term, '$options': 'i'}},
+                {'Designation': {'$regex': search_term, '$options': 'i'}}
+            ]
         if brand:
             query['Brand'] = {'$regex': brand, '$options': 'i'}
         if stock:
