@@ -177,9 +177,9 @@ def get_modification_stats():
 
 def distribute_product_dates():
     """
-    Randomly distribute product DateAjout across the last 30 days.
+    Randomly distribute product DateAjout from 30 days ago to today.
     - Step 1: Sets all products to -30 days ago
-    - Step 2: Distributes them across the 30-day period (20-80 per day)
+    - Step 2: Distributes them across the 31-day period (20-80 per day)
     - Step 3: Cleans up modifications that occurred before product was added
 
     This prevents products from showing as "new" but having old modifications.
@@ -207,8 +207,8 @@ def distribute_product_dates():
     )
     logger.info(f"Set {result.modified_count} products to -30 days ago")
 
-    # Step 2: Distribute products across 30 days
-    logger.info("Step 2: Distributing products across 30 days...")
+    # Step 2: Distribute products across 31 days (from 30 days ago to today)
+    logger.info("Step 2: Distributing products across 31 days (from 30 days ago to today)...")
 
     # Shuffle products to randomize selection
     random.shuffle(all_products)
@@ -217,8 +217,8 @@ def distribute_product_dates():
     product_index = 0
     total_updated = 0
 
-    # Process each day for the last 30 days
-    for day_offset in range(30, 0, -1):  # 30 days ago to 1 day ago
+    # Process each day from 30 days ago to today
+    for day_offset in range(30, -1, -1):  # 30 days ago to today (0 days ago)
         # Calculate the date for this day
         date_ajout = datetime.now() - timedelta(days=day_offset)
         date_ajout = date_ajout.replace(
@@ -272,7 +272,7 @@ def distribute_product_dates():
         logger.info(f"Day -{day_offset}: Successfully updated {day_updated} products")
 
     logger.info(f"Completed! Total products redistributed: {total_updated}")
-    logger.info(f"Average products per day: {total_updated / 30:.2f}")
+    logger.info(f"Average products per day: {total_updated / 31:.2f}")
 
     # Check if there are remaining products (they will stay at -30 days)
     if product_index < total_products:
@@ -280,7 +280,7 @@ def distribute_product_dates():
         logger.info(f"{remaining} products remain at -30 days ago (not redistributed)")
         logger.info(f"Products at -30 days: {remaining}")
     else:
-        logger.info("All products have been redistributed across the 30-day period")
+        logger.info("All products have been redistributed across the 31-day period (from 30 days ago to today)")
 
     # Step 3: Clean up modifications that occurred before product was added
     logger.info("Step 3: Cleaning up invalid modifications...")
