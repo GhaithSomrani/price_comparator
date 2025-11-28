@@ -370,7 +370,7 @@ if __name__ == '__main__':
     print("3. Get modification statistics")
     print()
     print("Product Date Options:")
-    print("4. Distribute product dates (last 30 days)")
+    print("4. Distribute product dates (from 30 days ago to today)")
     print("5. Get DateAjout statistics")
     print()
 
@@ -394,7 +394,7 @@ if __name__ == '__main__':
         get_modification_stats()
 
     elif choice == '4':
-        confirm = input("This will:\n1. Set ALL products to -30 days ago\n2. Distribute 20-80 products per day across the 30-day period\n3. Clean up modifications that occurred before products were added\nContinue? (yes/no): ").strip().lower()
+        confirm = input("This will:\n1. Set ALL products to -30 days ago\n2. Distribute 20-80 products per day across the 31-day period (from 30 days ago to today)\n3. Clean up modifications that occurred before products were added\nContinue? (yes/no): ").strip().lower()
         if confirm == 'yes':
             distribute_product_dates()
         else:
