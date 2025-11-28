@@ -21,12 +21,12 @@ logger = logging.getLogger(__name__)
 
 def add_price_modification_history():
     """
-    Add price modification history to random products over the last 30 days.
+    Add price modification history to random products over the last 30 days including today.
     - Only selects products with price > 30
     - Randomly selects 20-80 products per day
     - Creates fake modification history (current price stays the same)
     - Old prices are integers and multiples of 5
-    - Creates modification records for each day in the last 30 days
+    - Creates modification records for each day from 30 days ago to today (31 days total)
     """
     logger.info("Starting to add price modification history...")
 
@@ -40,10 +40,10 @@ def add_price_modification_history():
 
     logger.info(f"Found {total_products} products in database with price > 30")
 
-    # Process each day for the last 30 days
+    # Process each day for the last 30 days including today
     total_modifications = 0
 
-    for day_offset in range(30, 0, -1):  # 30 days ago to 1 day ago
+    for day_offset in range(30, -1, -1):  # 30 days ago to today (0 days ago)
         # Calculate the modification date
         modification_date = datetime.now() - timedelta(days=day_offset)
         modification_date = modification_date.replace(
@@ -115,7 +115,7 @@ def add_price_modification_history():
         logger.info(f"Day -{day_offset}: Successfully added {num_products_to_modify} modifications")
 
     logger.info(f"Completed! Total modifications added: {total_modifications}")
-    logger.info(f"Average modifications per day: {total_modifications / 30:.2f}")
+    logger.info(f"Average modifications per day: {total_modifications / 31:.2f}")
 
 
 def clear_all_modifications():
@@ -365,7 +365,7 @@ if __name__ == '__main__':
     print("=" * 60)
     print()
     print("Modification History Options:")
-    print("1. Add price modification history (last 30 days)")
+    print("1. Add price modification history (from 30 days ago to today)")
     print("2. Clear all modifications")
     print("3. Get modification statistics")
     print()
@@ -377,7 +377,7 @@ if __name__ == '__main__':
     choice = input("Enter your choice (1-5): ").strip()
 
     if choice == '1':
-        confirm = input("This will add fake modification history to 20-80 random products (price > 30) per day for 30 days.\nOld prices will be integers and multiples of 5. Continue? (yes/no): ").strip().lower()
+        confirm = input("This will add fake modification history to 20-80 random products (price > 30) per day from 30 days ago to today (31 days total).\nOld prices will be integers and multiples of 5. Continue? (yes/no): ").strip().lower()
         if confirm == 'yes':
             add_price_modification_history()
         else:
